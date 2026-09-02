@@ -1,14 +1,19 @@
-from ast import Try
+import os
+import sys
 from time import sleep
 import numpy as np
 from numpy import array
 import gatt
 import time
+import socket
 
 from argparse import ArgumentParser
 from array import array
-import socket 
-import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
+from imu_log import setup_logger, step
+
+log = setup_logger('imu_ble')
 
 
 class AnyDevice(gatt.Device):
@@ -18,20 +23,20 @@ class AnyDevice(gatt.Device):
 
     def connect_succeeded(self):
         super().connect_succeeded()
-        print("[%s] Connected" % (self.mac_address))
+        log.info('[%s] Подключено по Bluetooth', self.mac_address)
 
     def connect_failed(self, error):
         super().connect_failed(error)
-        print("[%s] Connection failed: %s" % (self.mac_address, str(error)))
+        log.error('[%s] Ошибка подключения: %s', self.mac_address, error)
 
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
-        print("[%s] Disconnected" % (self.mac_address))
+        log.info('[%s] Отключено', self.mac_address)
 
     def services_resolved(self):
         super().services_resolved()
 
-        print("[%s] Resolved services" % (self.mac_address))
+        log.info('[%s] Сервисы BLE обнаружены', self.mac_address)
         for service in self.services:
             print("[%s]\tService [%s]" % (self.mac_address, service.uuid))
             for characteristic in service.characteristics:
@@ -66,6 +71,7 @@ class AnyDevice(gatt.Device):
 
         # Proactively report 0x19
         lzchar1.write_value(bytes([0x19]))
+        log.info('[%s] IMU настроен, автоотчёт включён (0x19)', self.mac_address)
         
         lzchar2 = next(
             c for c in service.characteristics
@@ -77,19 +83,19 @@ class AnyDevice(gatt.Device):
 
     def characteristic_write_value_succeeded(self, characteristic):
         super().characteristic_write_value_succeeded(characteristic)
-        print("[%s] wr ok" % (self.mac_address))
+        log.debug('[%s] Запись в характеристику OK', self.mac_address)
 
     def characteristic_write_value_failed(self, characteristic, error):
         super().characteristic_write_value_failed(characteristic, error)
-        print("[%s] wr err %s" % (self.mac_address, error))
+        log.error('[%s] Ошибка записи: %s', self.mac_address, error)
     
     def characteristic_enable_notifications_succeeded(self, characteristic):
         super().characteristic_enable_notifications_succeeded(characteristic)
-        print("[%s] notify ok" % (self.mac_address))
+        log.info('[%s] Уведомления включены, ожидание данных IMU', self.mac_address)
 
     def characteristic_enable_notifications_failed(self, characteristic, error):
         super().characteristic_enable_notifications_failed(characteristic, error)
-        print("[%s] notify err. %s" % (self.mac_address, error))
+        log.error('[%s] Ошибка включения уведомлений: %s', self.mac_address, error)
 
     def characteristic_value_updated(self, characteristic, value):
         print("Lzchar:", value.hex()) 
@@ -227,7 +233,7 @@ class AnyDevice(gatt.Device):
             print(" ")
 
         else:
-            print("[error] data head not define")
+            log.warning('Неизвестный заголовок пакета: 0x%02X', buf[0])
 
 
 arg_parser = ArgumentParser(description="GATT Connect Demo")
@@ -241,18 +247,19 @@ args = arg_parser.parse_args()
 host = args.host_ip
 port = 6666
 sock = None
-print("host ip: ",host)
 if host is not None:
+    log.info('Подключение к TCP-серверу %s:%d...', host, port)
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, port))
-    except:
-        print("Could not make a connection to the server")
+        log.info('TCP-соединение установлено')
+    except OSError as exc:
+        log.error('Не удалось подключиться к серверу: %s', exc)
         input("Press enter to quit")
-        sys.exit(0)
+        sys.exit(1)
 
 
-print("Connecting bluetooth ...")
+step(log, 'Подключение к IMU по Bluetooth: %s' % args.mac_address)
 
 manager = gatt.DeviceManager(adapter_name='hci0')
 device = AnyDevice(manager=manager, mac_address=args.mac_address)

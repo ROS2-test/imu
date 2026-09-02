@@ -1,16 +1,21 @@
-import serial
+import os
+import sys
 import time
 import math
 import numpy as np
 from array import array
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+from imu_log import setup_logger, step, open_serial
+
+log = setup_logger('imu_init_acc')
 
 # Set the correct serial port parameters------------------------
 ser_port = "COM13"     #This needs to be replaced with the corresponding serial port number. For Windows systems, it is written as COMx. If it is Linux, it needs to be adjusted according to the system used, such as /dev/ttyUSBx or /dev/ttySx.
 ser_baudrate = 115200 # 串Port baud rate
 
 ser_timeout = 2 # Serial port operation timeout time
-# Open the serial port
-ser = serial.Serial(ser_port, ser_baudrate, timeout=ser_timeout)
+ser = open_serial(log, ser_port, ser_baudrate, ser_timeout)
 
 flag = 0
 
@@ -107,9 +112,10 @@ def Cmd_RxUnpack(buf, DLen):
     if buf[0] == 0x34:
         print("\taccelRange: %.3f"%buf[1]); # accelRange 
         print("\tgyroRange: %.3f"%buf[2]); # gyroRange 
+        log.info('Диапазоны: accel=%d, gyro=%d', buf[1], buf[2])
     
     else:
-        print("------data head not define")
+        log.warning('Неизвестный заголовок пакета: 0x%02X', buf[0])
 
 CmdPacket_Begin = 0x49   # Start code
 CmdPacket_End = 0x4D     # end code
@@ -192,7 +198,7 @@ def Cmd_PackAndTx(pDat, DLen):
 def read_data():
     global flag
     flag = 0
-    print("------------Start--------------")
+    step(log, 'Калибровка акселерометра (6 граней)')
 
     # Parameter settings
     isCompassOn = 0 #Whether to use magnetic field fusion 0: Not used 1: Used
@@ -226,25 +232,22 @@ def read_data():
     Cmd_PackAndTx([0x33,0x00,0x00], 3)
 
    # 5. Start accelerometer calibration
-    print("------------Start accelerometer calibration--------------")
+    step(log, 'Старт калибровки акселерометра (команда 0x17)')
     Cmd_PackAndTx([0x17,0x00], 2) 
-   # Static automatic collection of data, the light does not turn on, it means that this surface is collected, the light will resume flashing, waiting for the next surface to be collected, to collect six faces in total..
-    print("------------Static automatic collection of data, the light does not turn on, it means that this surface is collected, the light will resume flashing, waiting for the next surface to be collected, to collect six faces in total.--------------")
-    input("Press Enter to continue...")
+    log.info('Положите IMU на каждую из 6 граней. Индикатор перестанет мигать — грань принята.')
+    input("Нажмите Enter, когда все 6 граней собраны...")
  
    # 6. Finish accelerometer calibration
-    print("------------Finish accelerometer calibration--------------")   
+    step(log, 'Завершение калибровки акселерометра')
     Cmd_PackAndTx([0x17,0xff], 2) 
 
    # 7.Read the range of accelerometer and gyroscope
-    # AccRange range 0=2g 1=4g 2=8g 3=16g
-    # GyroRange range 0=256 1=512 2=1024 3=2048
-    print("------------Read the range of accelerometer and gyroscope--------------")  
+    step(log, 'Чтение диапазонов акселерометра и гироскопа')
     Cmd_PackAndTx([0x34], 1)  
 
    # 8. Read one time
     Cmd_PackAndTx([0x11], 1) 
-    print("------------Once calibration is complete, the gravitational acceleration modulus at final rest should be close to your local gravitational acceleratione--------------")  
+    log.info('Калибровка завершена. |g| в покое должен быть ~9.8 m/s² (см. Abs ниже)')
 
     # Loop to receive data and process it
     while flag==0:
@@ -253,4 +256,4 @@ def read_data():
             Cmd_GetPkt(data[0])
 # Start reading data
 read_data()
-print("------------Finish--------------") 
+log.info('Готово: калибровка акселерометра сохранена в прошивке')

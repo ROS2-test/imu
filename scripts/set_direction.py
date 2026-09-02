@@ -1,17 +1,22 @@
-import serial
+import os
+import sys
 import time
 import math
 import numpy as np
 import struct
 from array import array
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from imu_log import setup_logger, step, open_serial
+
+log = setup_logger('set_direction')
+
 # Set the correct serial port parameters------------------------
 ser_port = "COM13"     #This needs to be replaced with the corresponding serial port number. For Windows systems, it is written as COMx. If it is Linux, it needs to be adjusted according to the system used, such as /dev/ttyUSBx or /dev/ttySx.
 ser_baudrate = 115200 # 串Port baud rate
 
 ser_timeout = 2 # Serial port operation timeout time
-# Open the serial port
-ser = serial.Serial(ser_port, ser_baudrate, timeout=ser_timeout)
+ser = open_serial(log, ser_port, ser_baudrate, ser_timeout)
 
 flag = 0
 
@@ -110,8 +115,9 @@ def Cmd_RxUnpack(buf, DLen):
         magMatrix = struct.unpack('9b', buf[10:19])
 
         print("\naccMatrix:", ["%.3f" % val for val in accMatrix])
+        log.info('Матрица ориентации PCB прочитана')
     else:
-        print("------data head not define")
+        log.warning('Неизвестный заголовок пакета: 0x%02X', buf[0])
 
 CmdPacket_Begin = 0x49   # Start code
 CmdPacket_End = 0x4D     # end code
@@ -194,7 +200,7 @@ def Cmd_PackAndTx(pDat, DLen):
 def read_data():
     global flag
     flag = 0
-    print("------------Start--------------")
+    step(log, 'Настройка ориентации PCB на корпусе')
 
     # Parameter settings
     isCompassOn = 0 #Whether to use magnetic field fusion 0: Not used 1: Used
@@ -223,7 +229,7 @@ def read_data():
     Cmd_PackAndTx([0x18], 1)
 
     # 4.Set the PCB mounting direction
-    print("------------Set the PCB mounting direction--------------")
+    step(log, 'Запись матрицы установки PCB (команда 0x20)')
     # Accelerometer direction matrix
     # Magnetometer direction matrix
     buf = bytearray(20)
@@ -247,14 +253,14 @@ def read_data():
     time.sleep(5)
 
    # 5. Read the PCB mounting direction
-    print("------------Read the PCB mounting direction--------------")
+    step(log, 'Чтение матрицы установки PCB (команда 0x21)')
     Cmd_PackAndTx([0x21], 1) 
 
    # 6. Read one time
     Cmd_PackAndTx([0x11], 1) 
 
    # 7. Z axis angle reset to zero
-    print("------------Z axis angle reset to zero--------------")  
+    step(log, 'Сброс угла Z в ноль (команда 0x05)')
     Cmd_PackAndTx([0x05], 1)  
     time.sleep(0.5)
 
@@ -265,4 +271,4 @@ def read_data():
             Cmd_GetPkt(data[0])
 # Start reading data
 read_data()
-print("------------Finish--------------")
+log.info('Готово: ориентация PCB записана и проверена')
