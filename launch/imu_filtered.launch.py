@@ -9,7 +9,7 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     # Declare launch arguments
     port_name_arg = DeclareLaunchArgument(
-        'imu_port', 
+        'serial_port', 
         default_value='/dev/ttyUSB2',
         description='Serial port to connect to the IMU device'
     )
