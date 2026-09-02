@@ -8,20 +8,20 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     # Declare launch arguments
     port_name_arg = DeclareLaunchArgument(
-        'port_name', 
-        default_value='/dev/ttyUSB0',
+        'imu_port', 
+        default_value='/dev/ttyUSB2',
         description='Serial port to connect to the IMU device'
     )
     
     topic_name_arg = DeclareLaunchArgument(
         'topic_name',
-        default_value='imu/data',
+        default_value='imu/data_raw',
         description='Topic name for IMU data publishing'
     )
     
     rate_arg = DeclareLaunchArgument(
         'rate',
-        default_value='60',
+        default_value='100',
         description='Rate in Hz for IMU data acquisition and publishing (1-250Hz)'
     )
 
@@ -30,7 +30,7 @@ def generate_launch_description():
         package='imu',
         executable='imu_node',
         parameters=[{
-            'port_name': LaunchConfiguration('port_name'),
+            'port_name': LaunchConfiguration('imu_port'),
             'rate': LaunchConfiguration('rate')
         }],
         remappings=[
