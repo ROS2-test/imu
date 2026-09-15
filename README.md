@@ -34,7 +34,13 @@ scripts/
 | Скорость | **115200**, 8N1 |
 | Питание | 3.3–5 V |
 
-Обычно CH340: `/dev/ttyUSB0`. Пользователь должен быть в группе `dialout`:
+На этой машине IMU — **CH340** (`1a86:7523`):
+
+```
+/dev/ttyUSB0   → обычно /dev/ttyUSB0
+```
+
+Пользователь должен быть в группе `dialout`:
 
 ```bash
 sudo usermod -aG dialout $USER
@@ -184,13 +190,17 @@ cd ~/ros2_ws
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
 
-ros2 launch imu imu.launch.py port_name:=/dev/ttyUSB0
+ros2 launch imu imu.launch.py
+# или явно:
+ros2 launch imu imu.launch.py serial_port:=/dev/ttyUSB0
 ros2 topic echo /imu/data
 ```
 
 С RViz:
 
 ```bash
+ros2 launch imu imu_view.launch.py
+# или явно:
 ros2 launch imu imu_view.launch.py port_name:=/dev/ttyUSB0
 ```
 

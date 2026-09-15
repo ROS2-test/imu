@@ -709,7 +709,7 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
         {
             sensor_msgs::msg::Imu imu_data;
             nav_msgs::msg::Odometry odom_data;
-            const auto stamp = rclcpp::Clock().now();
+            const auto stamp = rclcpp::Clock(RCL_ROS_TIME).now();
 
             imu_data.header.stamp = stamp;
             imu_data.header.frame_id = "base_imu_link";
@@ -724,6 +724,7 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
 
             ctl = ((U16)buf[2] << 8) | buf[1];
             L =7;
+            bool has_gyro = false;
             if ((ctl & 0x0001) != 0)
             {
                 tmpX = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAccel; L += 2;
@@ -743,6 +744,7 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
             }
             if ((ctl & 0x0004) != 0)
             {
+                has_gyro = true;
                 tmpX = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
                 tmpY = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
                 tmpZ = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
@@ -820,6 +822,28 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
                 odom_data.twist.twist.linear.y = vel_y;
                 odom_data.twist.twist.linear.z = vel_z;
             }
+
+            // Пакет без gyro будет ложные нули срать
+            const bool omega_zero =
+                imu_data.angular_velocity.x == 0.0 &&
+                imu_data.angular_velocity.y == 0.0 &&
+                imu_data.angular_velocity.z == 0.0;
+            if (!has_gyro || omega_zero)
+            {
+                break;
+            }
+
+            // EKF берёт cov из сообщения а не с конфига (приоритетно)
+            constexpr double kImuCov = 1e-4;
+            imu_data.orientation_covariance[0] =
+                imu_data.orientation_covariance[4] =
+                    imu_data.orientation_covariance[8] = kImuCov;
+            imu_data.angular_velocity_covariance[0] =
+                imu_data.angular_velocity_covariance[4] =
+                    imu_data.angular_velocity_covariance[8] = kImuCov;
+            imu_data.linear_acceleration_covariance[0] =
+                imu_data.linear_acceleration_covariance[4] =
+                    imu_data.linear_acceleration_covariance[8] = kImuCov;
 
             extern rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imuMsg_pub;
             extern rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomMsg_pub;

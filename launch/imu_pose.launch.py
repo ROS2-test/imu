@@ -8,8 +8,9 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     port_name_arg = DeclareLaunchArgument(
-        'port_name', default_value='/dev/ttyUSB0',
-        description='Serial port for IMU'
+        'port_name',
+        default_value='/dev/ttyUSB0',
+        description='Serial port for Waveshare IMU (CH340)'
     )
     rate_arg = DeclareLaunchArgument(
         'rate', default_value='60',

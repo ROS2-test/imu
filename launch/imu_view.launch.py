@@ -9,8 +9,9 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     # Declare launch arguments
     port_name_arg = DeclareLaunchArgument(
-        'port_name', default_value='/dev/ttyUSB0',
-        description='Choose which port to use'
+        'port_name',
+        default_value='/dev/ttyUSB0',
+        description='Serial port for Waveshare IMU (CH340)'
     )
 
     # Define the nodes to be launched

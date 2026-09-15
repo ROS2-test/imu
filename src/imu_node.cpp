@@ -27,10 +27,11 @@ int main(int argc, char *argv[])
     auto node = std::make_shared<rclcpp::Node>("imu_node");
 
     node->declare_parameter<std::string>("port_name", "/dev/ttyUSB0");
-    node->declare_parameter<int>("rate", 60);
-    node->declare_parameter<int>("report_tag", 0x00ff);
+    node->declare_parameter<int>("rate", 100);
+    // accel|gyro|quat — узкий тег, меньше обрывов на 115200@100Hz
+    node->declare_parameter<int>("report_tag", 0x0026);
     node->declare_parameter<int>("still_to_zero", 0);
-    node->declare_parameter<bool>("use_compass", true);
+    node->declare_parameter<bool>("use_compass", false);
 
     std::string port_name;
     int rate_hz;
@@ -72,8 +73,11 @@ int main(int argc, char *argv[])
     }
     RCLCPP_INFO_STREAM(node->get_logger(), "Serial Port initialized");
 
-    Cmd_12(5, still_to_zero, 0, use_compass ? 1 : 0, 2, rate_hz, 1, 3, 5,
+    // Фильтры модуля выкл (gyro/acc/compass=0): сырой поток, yaw в EKF без лага фильтра
+    Cmd_12(5, still_to_zero, 0, use_compass ? 1 : 0, 0, rate_hz, 0, 0, 0,
            static_cast<U16>(report_tag));
+    Cmd_35(0);  // выкл автокоррекцию gyro (иначе иногда ω→0)
+    Cmd_37(0);  // выкл eco/sleep (паузы репорта)
     Cmd_03();
     Cmd_19();
     Cmd_05();

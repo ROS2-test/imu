@@ -9,9 +9,9 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     # Declare launch arguments
     port_name_arg = DeclareLaunchArgument(
-        'serial_port', 
-        default_value='/dev/ttyUSB2',
-        description='Serial port to connect to the IMU device'
+        'serial_port',
+        default_value='/dev/ttyUSB0',
+        description='Serial port for Waveshare IMU (CH340)'
     )
     
     topic_name_arg = DeclareLaunchArgument(

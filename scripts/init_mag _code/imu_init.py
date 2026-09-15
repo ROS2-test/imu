@@ -11,7 +11,7 @@ from imu_log import setup_logger, step, open_serial
 log = setup_logger('imu_init_mag')
 
 # Set the correct serial port parameters------------------------
-ser_port = "COM13"     #This needs to be replaced with the corresponding serial port number. For Windows systems, it is written as COMx. If it is Linux, it needs to be adjusted according to the system used, such as /dev/ttyUSBx or /dev/ttySx.
+ser_port = "/dev/ttyUSB0"  # Waveshare IMU (CH340)
 ser_baudrate = 115200 # 串Port baud rate
 
 ser_timeout = 2 # Serial port operation timeout time

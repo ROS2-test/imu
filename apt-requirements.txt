@@ -1,0 +1,9 @@
+# sudo xargs -a src/IMU_waveshare/apt-requirements.txt apt-get install -y
+# serial нет для ros2 jazzy
+
+python3-serial
+ros-jazzy-imu-filter-madgwick
+ros-jazzy-imu-tools
+ros-jazzy-rviz2
+build-essential
+cmake

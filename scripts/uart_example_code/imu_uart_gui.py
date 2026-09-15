@@ -15,7 +15,7 @@ import pygame
 from pygame.locals import *
 
 # Set the correct serial port parameters------------------------
-ser_port = "/dev/ttyUSB0"     # Linux: /dev/ttyUSBx; Windows: COMx
+ser_port = "/dev/ttyUSB0"  # Waveshare IMU (CH340)
 ser_baudrate = 115200 # 串Port baud rate
 
 ser_timeout = 2 # Serial port operation timeout time

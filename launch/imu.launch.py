@@ -8,9 +8,9 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     # Declare launch arguments
     port_name_arg = DeclareLaunchArgument(
-        'serial_port', 
-        default_value='/dev/ttyUSB2',
-        description='Serial port to connect to the IMU device'
+        'serial_port',
+        default_value='/dev/ttyIMU',
+        description='Serial port for Waveshare IMU (CH340); use /dev/ttyIMU from udev'
     )
     
     topic_name_arg = DeclareLaunchArgument(
@@ -25,13 +25,21 @@ def generate_launch_description():
         description='Rate in Hz for IMU data acquisition and publishing (1-250Hz)'
     )
 
+    use_compass_arg = DeclareLaunchArgument(
+        'use_compass',
+        default_value='false',
+        description='Mag fusion on module; leave false when EKF uses gyro ωz only'
+    )
+
     # Define the IMU node with parameters and remappings
     imu_node = Node(
         package='imu',
         executable='imu_node',
         parameters=[{
             'port_name': LaunchConfiguration('serial_port'),
-            'rate': LaunchConfiguration('rate')
+            'rate': LaunchConfiguration('rate'),
+            'use_compass': LaunchConfiguration('use_compass'),
+            'still_to_zero': 0,
         }],
         remappings=[
             ('imu/data', LaunchConfiguration('topic_name'))
@@ -43,5 +51,6 @@ def generate_launch_description():
         port_name_arg,
         topic_name_arg,
         rate_arg,
+        use_compass_arg,
         imu_node
     ]) 
