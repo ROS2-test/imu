@@ -724,7 +724,6 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
 
             ctl = ((U16)buf[2] << 8) | buf[1];
             L =7;
-            bool has_gyro = false;
             if ((ctl & 0x0001) != 0)
             {
                 tmpX = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAccel; L += 2;
@@ -744,7 +743,6 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
             }
             if ((ctl & 0x0004) != 0)
             {
-                has_gyro = true;
                 tmpX = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
                 tmpY = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
                 tmpZ = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngleSpeed; L += 2;
@@ -823,15 +821,7 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
                 odom_data.twist.twist.linear.z = vel_z;
             }
 
-            // Пакет без gyro будет ложные нули срать
-            const bool omega_zero =
-                imu_data.angular_velocity.x == 0.0 &&
-                imu_data.angular_velocity.y == 0.0 &&
-                imu_data.angular_velocity.z == 0.0;
-            if (!has_gyro || omega_zero)
-            {
-                break;
-            }
+            // Publish every 0x11 report (no omega_zero / has_gyro gate).
 
             // EKF берёт cov из сообщения а не с конфига (приоритетно)
             constexpr double kImuCov = 1e-4;

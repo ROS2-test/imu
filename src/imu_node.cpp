@@ -54,22 +54,33 @@ int main(int argc, char *argv[])
     imuMsg_pub = node->create_publisher<sensor_msgs::msg::Imu>("imu/data", 20);
     odomMsg_pub = node->create_publisher<nav_msgs::msg::Odometry>("imu/odom", 20);
 
-    try
+    // Retry open until USB is ready (was: open once and exit -1).
+    while (rclcpp::ok())
     {
-        com.setPort(port_name);
-        com.setBaudrate(115200);
-        serial::Timeout to = serial::Timeout::simpleTimeout(1000);
-        com.setTimeout(to);
-        com.open();
+        try
+        {
+            com.setPort(port_name);
+            com.setBaudrate(115200);
+            serial::Timeout to = serial::Timeout::simpleTimeout(1000);
+            com.setTimeout(to);
+            com.open();
+        }
+        catch (serial::IOException& e)
+        {
+            RCLCPP_WARN_STREAM(node->get_logger(),
+                "Unable to open port-->" << port_name << ", retry in 1s");
+            rclcpp::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+        if (com.isOpen())
+        {
+            break;
+        }
+        rclcpp::sleep_for(std::chrono::seconds(1));
     }
-    catch (serial::IOException& e)
+    if (!rclcpp::ok())
     {
-        RCLCPP_ERROR_STREAM(node->get_logger(), "Unable to open port-->" << port_name);
-        return -1;
-    }
-    if(!com.isOpen())
-    {
-        return -1;
+        return 0;
     }
     RCLCPP_INFO_STREAM(node->get_logger(), "Serial Port initialized");
 

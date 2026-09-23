@@ -35,6 +35,9 @@ def generate_launch_description():
     imu_node = Node(
         package='imu',
         executable='imu_node',
+        output='screen',
+        respawn=True,
+        respawn_delay=2.0,
         parameters=[{
             'port_name': LaunchConfiguration('serial_port'),
             'rate': LaunchConfiguration('rate'),
