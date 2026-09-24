@@ -709,7 +709,10 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
         {
             sensor_msgs::msg::Imu imu_data;
             nav_msgs::msg::Odometry odom_data;
-            const auto stamp = rclcpp::Clock(RCL_ROS_TIME).now();
+            extern rclcpp::Clock::SharedPtr g_imu_clock;
+            const auto stamp = g_imu_clock
+                ? g_imu_clock->now()
+                : rclcpp::Clock(RCL_ROS_TIME).now();
 
             imu_data.header.stamp = stamp;
             imu_data.header.frame_id = "base_imu_link";
