@@ -45,6 +45,15 @@ def generate_launch_description():
         ]
     )
 
+    imu_yaw_node = Node(
+        package='imu',
+        executable='imu_yaw_node',
+        parameters=[{
+            'imu_topic': LaunchConfiguration('topic_name'),
+            'yaw_topic': 'imu/yaw',
+        }],
+    )
+
     # Madgwick filter
     imu_filter_node = Node(
         package='imu_filter_madgwick',
@@ -79,5 +88,6 @@ def generate_launch_description():
         rate_arg,
         use_filter_arg,
         imu_node,
+        imu_yaw_node,
         imu_filter_node,
     ])

@@ -10,7 +10,6 @@ Record: 1、Added accelerometer and gyroscope ranges that can be set
 #include <serial/serial.h> 
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/string.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include <sstream>
@@ -796,17 +795,6 @@ static void Cmd_RxUnpack(U8 *buf, U8 DLen)
                 tmpX = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngle; L += 2;
                 tmpY = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngle; L += 2;
                 tmpZ = (S16)(((S16)buf[L+1]<<8) | buf[L]) * scaleAngle; L += 2;
-                // Waveshare AngleZ (deg) — тот же угол, что обнуляет Cmd_05.
-                extern rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yawMsg_pub;
-                if (yawMsg_pub)
-                {
-                    std_msgs::msg::Float32 yaw_msg;
-                    float yaw_rad = tmpZ * 0.01745329252f;  // deg → rad
-                    // wrap (−π, π]
-                    yaw_rad = atan2f(sinf(yaw_rad), cosf(yaw_rad));
-                    yaw_msg.data = yaw_rad;
-                    yawMsg_pub->publish(yaw_msg);
-                }
             }
             if ((ctl & 0x0080) != 0)
             {

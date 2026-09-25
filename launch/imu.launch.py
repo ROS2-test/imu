@@ -12,13 +12,19 @@ def generate_launch_description():
         default_value='/dev/ttyIMU',
         description='Serial port for Waveshare IMU (CH340); use /dev/ttyIMU from udev'
     )
-    
+
     topic_name_arg = DeclareLaunchArgument(
         'topic_name',
         default_value='imu/data_raw',
         description='Topic name for IMU data publishing'
     )
-    
+
+    yaw_topic_arg = DeclareLaunchArgument(
+        'yaw_topic',
+        default_value='imu/yaw',
+        description='Yaw (rad) from IMU orientation quaternion'
+    )
+
     rate_arg = DeclareLaunchArgument(
         'rate',
         default_value='100',
@@ -49,11 +55,25 @@ def generate_launch_description():
         ]
     )
 
-    # Return the launch description with all defined actions
+    # Yaw from imu/data_raw orientation — same rate as Imu messages.
+    imu_yaw_node = Node(
+        package='imu',
+        executable='imu_yaw_node',
+        output='screen',
+        respawn=True,
+        respawn_delay=2.0,
+        parameters=[{
+            'imu_topic': LaunchConfiguration('topic_name'),
+            'yaw_topic': LaunchConfiguration('yaw_topic'),
+        }],
+    )
+
     return LaunchDescription([
         port_name_arg,
         topic_name_arg,
+        yaw_topic_arg,
         rate_arg,
         use_compass_arg,
-        imu_node
-    ]) 
+        imu_node,
+        imu_yaw_node,
+    ])

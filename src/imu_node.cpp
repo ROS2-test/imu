@@ -3,14 +3,12 @@
 #include <serial/serial.h>
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/string.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 
 serial::Serial com; //Declare serial port object
 rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imuMsg_pub;
 rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odomMsg_pub;
-rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yawMsg_pub;
 rclcpp::Clock::SharedPtr g_imu_clock;
 
 //------------------------------------------------------------------------------
@@ -51,8 +49,8 @@ int main(int argc, char *argv[])
 
     node->declare_parameter<std::string>("port_name", "/dev/ttyUSB0");
     node->declare_parameter<int>("rate", 100);
-    // accel|gyro|quat|euler — euler Z для set_angle на MCU (Cmd_05 zero)
-    node->declare_parameter<int>("report_tag", 0x0066);
+    // accel|gyro|quat — узкий тег, меньше обрывов на 115200@100Hz
+    node->declare_parameter<int>("report_tag", 0x0026);
     node->declare_parameter<int>("still_to_zero", 0);
     node->declare_parameter<bool>("use_compass", false);
 
@@ -76,7 +74,6 @@ int main(int argc, char *argv[])
 
     imuMsg_pub = node->create_publisher<sensor_msgs::msg::Imu>("imu/data", 20);
     odomMsg_pub = node->create_publisher<nav_msgs::msg::Odometry>("imu/odom", 20);
-    yawMsg_pub = node->create_publisher<std_msgs::msg::Float32>("imu/yaw", 20);
     g_imu_clock = node->get_clock();
 
     // Retry open until USB is ready (was: open once and exit -1).
