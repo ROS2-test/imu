@@ -55,7 +55,7 @@ def generate_launch_description():
         ]
     )
 
-    # Yaw from imu/data_raw orientation — same rate as Imu messages.
+    # Heading: rotate IMU quat by mount RPY (roll=π, pitch=-π/2), then yaw.
     imu_yaw_node = Node(
         package='imu',
         executable='imu_yaw_node',
@@ -65,6 +65,10 @@ def generate_launch_description():
         parameters=[{
             'imu_topic': LaunchConfiguration('topic_name'),
             'yaw_topic': LaunchConfiguration('yaw_topic'),
+            'use_mount': True,
+            'mount_roll': 3.141592653589793,
+            'mount_pitch': -1.5707963267948966,
+            'mount_yaw': 0.0,
         }],
     )
 
