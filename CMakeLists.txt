@@ -53,7 +53,7 @@ target_include_directories(imu_node PUBLIC include)
 ament_target_dependencies(imu_node ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 add_executable(imu_yaw_node src/imu_yaw_node.cpp)
-ament_target_dependencies(imu_yaw_node rclcpp sensor_msgs std_msgs)
+ament_target_dependencies(imu_yaw_node rclcpp sensor_msgs std_msgs nav_msgs)
 
 set_target_properties(imu_node PROPERTIES INSTALL_RPATH "/usr/local/lib")
 

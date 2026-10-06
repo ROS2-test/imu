@@ -29,7 +29,7 @@ def generate_launch_description():
             'rate': LaunchConfiguration('rate'),
             'report_tag': LaunchConfiguration('report_tag'),
             'still_to_zero': 0,
-            'use_compass': True,
+            'use_compass': False,
         }]
     )
 
