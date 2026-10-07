@@ -4,7 +4,6 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 
 namespace {
@@ -37,9 +36,9 @@ inline double yaw_from_quat(double x, double y, double z, double w)
  *
  * Strategy:
  *  - Maintain continuous_yaw from IMU *deltas* only (never absolute).
- *  - While frozen (|ωz| < threshold): integrate wheel_odom ω, do not mark valid.
+ *  - While frozen (|ωz| < threshold): integrate wheel_odom ω, do not publish.
  *  - On unfreeze: re-anchor last IMU sample without jumping continuous_yaw.
- *  - Publish /imu/yaw always; /imu/yaw_valid false while frozen → SOVA skips apply.
+ *  - Publish /imu/yaw only while not frozen (SOVA applies while messages arrive).
  */
 class ImuYawNode : public rclcpp::Node
 {
@@ -50,19 +49,16 @@ public:
     declare_parameter<std::string>("imu_topic", "/imu/data_raw");
     declare_parameter<std::string>("odom_topic", "/wheel_odom");
     declare_parameter<std::string>("yaw_topic", "/imu/yaw");
-    declare_parameter<std::string>("valid_topic", "/imu/yaw_valid");
     declare_parameter<double>("freeze_wz_eps", 0.10);
     declare_parameter<int>("freeze_consec", 3);
 
     const auto imu_topic = get_parameter("imu_topic").as_string();
     const auto odom_topic = get_parameter("odom_topic").as_string();
     const auto yaw_topic = get_parameter("yaw_topic").as_string();
-    const auto valid_topic = get_parameter("valid_topic").as_string();
     freeze_wz_eps_ = get_parameter("freeze_wz_eps").as_double();
     freeze_consec_ = get_parameter("freeze_consec").as_int();
 
     yaw_pub_ = create_publisher<std_msgs::msg::Float32>(yaw_topic, 10);
-    valid_pub_ = create_publisher<std_msgs::msg::Bool>(valid_topic, 10);
 
     imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
       imu_topic, rclcpp::SensorDataQoS(),
@@ -74,20 +70,16 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "imu_yaw_node: continuous yaw, freeze |wz|<%.3f for %d samples → yaw_valid=false",
+      "imu_yaw_node: continuous yaw, freeze |wz|<%.3f for %d samples -> no /imu/yaw",
       freeze_wz_eps_, freeze_consec_);
   }
 
 private:
-  void publish_yaw(bool valid)
+  void publish_yaw()
   {
     std_msgs::msg::Float32 yaw_msg;
     yaw_msg.data = static_cast<float>(continuous_yaw_);
     yaw_pub_->publish(yaw_msg);
-
-    std_msgs::msg::Bool valid_msg;
-    valid_msg.data = valid;
-    valid_pub_->publish(valid_msg);
   }
 
   void on_odom(const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -106,7 +98,6 @@ private:
     }
 
     last_odom_t_ = t;
-    last_wheel_wz_ = wz;
     have_odom_stamp_ = true;
   }
 
@@ -132,48 +123,38 @@ private:
       last_imu_yaw_ = imu_yaw;
       initialized_ = true;
       frozen_ = now_frozen;
-      publish_yaw(!frozen_);
+      if (!frozen_) {
+        publish_yaw();
+      }
       return;
     }
 
     if (now_frozen) {
-      if (!frozen_) {
-        RCLCPP_WARN(
-          get_logger(),
-          "IMU yaw freeze (|wz|<%.3f): hold apply, integrate wheel ω",
-          freeze_wz_eps_);
-      }
       frozen_ = true;
       // Absolute IMU yaw is stale; do not advance continuous from IMU.
-      // Wheel integration happens in on_odom.
+      // Wheel integration happens in on_odom. Do not publish.
       last_imu_yaw_ = imu_yaw;
-      publish_yaw(false);
       return;
     }
 
     // Alive / just woke: advance only by IMU delta relative to last sample.
     if (frozen_) {
-      RCLCPP_WARN(
-        get_logger(),
-        "IMU yaw unfreeze: resume relative deltas (no absolute snap), cont=%.3f imu=%.3f",
-        continuous_yaw_, imu_yaw);
       // Re-anchor: discard jump between last frozen IMU and current IMU.
       last_imu_yaw_ = imu_yaw;
       frozen_ = false;
-      publish_yaw(true);
+      publish_yaw();
       return;
     }
 
     const double dy = wrap_pi(imu_yaw - last_imu_yaw_);
     continuous_yaw_ = wrap_pi(continuous_yaw_ + dy);
     last_imu_yaw_ = imu_yaw;
-    publish_yaw(true);
+    publish_yaw();
   }
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr yaw_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr valid_pub_;
 
   std::mutex mutex_;
   double freeze_wz_eps_{0.10};
@@ -186,7 +167,6 @@ private:
   double continuous_yaw_{0.0};
   double last_imu_yaw_{0.0};
   double last_odom_t_{0.0};
-  double last_wheel_wz_{0.0};
 };
 
 int main(int argc, char ** argv)
