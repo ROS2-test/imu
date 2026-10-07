@@ -36,9 +36,9 @@ inline double yaw_from_quat(double x, double y, double z, double w)
  *
  * Strategy:
  *  - Maintain continuous_yaw from IMU *deltas* only (never absolute).
- *  - While frozen (|ωz| < threshold): integrate wheel_odom ω, do not publish.
+ *  - While frozen (|ωz| < threshold): integrate wheel_odom ω.
  *  - On unfreeze: re-anchor last IMU sample without jumping continuous_yaw.
- *  - Publish /imu/yaw only while not frozen (SOVA applies while messages arrive).
+ *  - Always publish /imu/yaw.
  */
 class ImuYawNode : public rclcpp::Node
 {
@@ -46,7 +46,7 @@ public:
   ImuYawNode()
   : Node("imu_yaw_node")
   {
-    declare_parameter<std::string>("imu_topic", "/imu/data_raw");
+    declare_parameter<std::string>("imu_topic", "/imu/data");
     declare_parameter<std::string>("odom_topic", "/wheel_odom");
     declare_parameter<std::string>("yaw_topic", "/imu/yaw");
     declare_parameter<double>("freeze_wz_eps", 0.10);
@@ -70,8 +70,8 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "imu_yaw_node: continuous yaw, freeze |wz|<%.3f for %d samples -> no /imu/yaw",
-      freeze_wz_eps_, freeze_consec_);
+      "imu_yaw_node: continuous yaw on %s, freeze |wz|<%.3f -> wheel integrate",
+      yaw_topic.c_str(), freeze_wz_eps_);
   }
 
 private:
@@ -94,6 +94,7 @@ private:
       const double dt = t - last_odom_t_;
       if (dt > 0.0 && dt < 0.5) {
         continuous_yaw_ = wrap_pi(continuous_yaw_ + wz * dt);
+        publish_yaw();
       }
     }
 
@@ -123,23 +124,18 @@ private:
       last_imu_yaw_ = imu_yaw;
       initialized_ = true;
       frozen_ = now_frozen;
-      if (!frozen_) {
-        publish_yaw();
-      }
+      publish_yaw();
       return;
     }
 
     if (now_frozen) {
       frozen_ = true;
-      // Absolute IMU yaw is stale; do not advance continuous from IMU.
-      // Wheel integration happens in on_odom. Do not publish.
       last_imu_yaw_ = imu_yaw;
+      publish_yaw();
       return;
     }
 
-    // Alive / just woke: advance only by IMU delta relative to last sample.
     if (frozen_) {
-      // Re-anchor: discard jump between last frozen IMU and current IMU.
       last_imu_yaw_ = imu_yaw;
       frozen_ = false;
       publish_yaw();

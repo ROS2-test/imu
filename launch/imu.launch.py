@@ -27,8 +27,7 @@ def generate_launch_description():
                 'imu_topic': '/imu/data',
                 'odom_topic': '/wheel_odom',
                 'yaw_topic': '/imu/yaw',
-                # Waveshare zeros gyro below ~0.1 rad/s -- treat as freeze
-                # (no /imu/yaw publish while frozen)
+
                 'freeze_wz_eps': 0.10,
                 'freeze_consec': 3,
             }],
