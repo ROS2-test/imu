@@ -27,9 +27,16 @@ def generate_launch_description():
                 'imu_topic': '/imu/data',
                 'odom_topic': '/wheel_odom',
                 'yaw_topic': '/imu/yaw',
-
-                'freeze_wz_eps': 0.10,
-                'freeze_consec': 3,
+                'valid_topic': '/imu/yaw_valid',
+                # Health latch: dead if turning & gyro silent/yaw stuck;
+                # alive only if w_imu agrees with w_wheel (any speed).
+                'imu_wz_dead_eps': 0.10,
+                'wheel_wz_eps': 0.05,
+                'freeze_dyaw_eps': 1.0e-4,
+                'agree_lo': 0.4,
+                'agree_hi': 2.5,
+                'freeze_consec': 5,
+                'unfreeze_consec': 40,
             }],
         ),
     ])
